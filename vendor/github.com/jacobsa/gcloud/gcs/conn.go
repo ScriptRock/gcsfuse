@@ -71,6 +71,9 @@ type ConnConfig struct {
 	// empty, a default will be used.
 	UserAgent string
 
+	// Customer-Supplied Encryption Key raw data
+	CSEKKey []byte
+
 	// The HTTP transport to use for communication with GCS. If not supplied,
 	// http.DefaultTransport will be used.
 	Transport httputil.CancellableRoundTripper
@@ -128,6 +131,13 @@ func NewConn(cfg *ConnConfig) (c Conn, err error) {
 	transport = &oauth2.Transport{
 		Source: cfg.TokenSource,
 		Base:   transport,
+	}
+
+	// Add CSEK Key headers if requested.
+	if len(cfg.CSEKKey) > 0 {
+		transport = httputil.EncryptionHeadersRoundTripper(transport, cfg.CSEKKey)
+	} else {
+		panic("SHIT")
 	}
 
 	// Set up the connection.
