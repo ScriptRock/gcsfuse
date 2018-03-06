@@ -26,11 +26,15 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"net/http"
 	"path"
 	"path/filepath"
+	"encoding/json"
 	"runtime"
 	"runtime/pprof"
+	"crypto/sha256"
 	"syscall"
+	"encoding/base64"
 	"time"
 
 	"golang.org/x/net/context"
@@ -44,6 +48,7 @@ import (
 	"github.com/jacobsa/gcloud/gcs"
 	"github.com/jacobsa/syncutil"
 	"github.com/kardianos/osext"
+	"google.golang.org/api/gensupport"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -198,6 +203,40 @@ func getConn(flags *flagStorage) (c gcs.Conn, err error) {
 		if err != nil {
 			err = fmt.Errorf("DefaultTokenSource: %v", err)
 			return
+		}
+	}
+
+	if flags.CSEKFile != "" {
+		expectedKeyLengthBytes := 32
+		type CSEKInfo struct {
+			// type is always AES256
+			Key []byte `json:"encryption-key"`
+		}
+		csekInfo := &CSEKInfo{}
+		var data []byte
+		if data, err = ioutil.ReadFile(flags.CSEKFile); err != nil {
+			err = fmt.Errorf("csek-file read: %v", err)
+			return
+		} else if err = json.Unmarshal(data, csekInfo); err != nil {
+			err = fmt.Errorf("csek-file json unmarshal: %v", err)
+			return
+		} else if len(csekInfo.Key) != expectedKeyLengthBytes {
+			err = fmt.Errorf("csek-file key, expected: %v saw %v", expectedKeyLengthBytes, len(csekInfo.Key))
+			return
+		} else {
+			h := sha256.New()
+			h.Write(csekInfo.Key)
+			algo := "AES256"
+			csum := fmt.Sprintf("%x", h.Sum(nil))
+			key := base64.StdEncoding.EncodeToString(csekInfo.Key)
+
+			// register a hook to add appropriate encryption headers to http requests
+			gensupport.RegisterHook(func(ctx context.Context, req *http.Request) func(resp *http.Response) {
+				req.Header.Add("x-goog-encryption-algorithm", algo)
+				req.Header.Add("x-goog-encryption-key", key)
+				req.Header.Add("x-goog-encryption-key-sha256", csum)
+				return nil
+			})
 		}
 	}
 

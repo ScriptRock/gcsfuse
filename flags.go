@@ -142,6 +142,13 @@ func newApp() (app *cli.App) {
 					"(use -1 for no limit)",
 			},
 
+			cli.StringFlag{
+				Name:  "csek-file",
+				Value: "",
+				Usage: "Absolute path to JSON file with Customer-Supplied Encryption Keys for use with GCS. " +
+					"(default: none, CSEK will not be used)",
+			},
+
 			/////////////////////////
 			// Tuning
 			/////////////////////////
@@ -212,6 +219,7 @@ type flagStorage struct {
 	KeyFile                            string
 	EgressBandwidthLimitBytesPerSecond float64
 	OpRateLimitHz                      float64
+	CSEKFile                           string
 
 	// Tuning
 	StatCacheTTL time.Duration
@@ -245,6 +253,7 @@ func populateFlags(c *cli.Context) (flags *flagStorage) {
 		KeyFile:        c.String("key-file"),
 		EgressBandwidthLimitBytesPerSecond: c.Float64("limit-bytes-per-sec"),
 		OpRateLimitHz:                      c.Float64("limit-ops-per-sec"),
+		CSEKFile:       c.String("csek-file"),
 
 		// Tuning,
 		StatCacheTTL: c.Duration("stat-cache-ttl"),
