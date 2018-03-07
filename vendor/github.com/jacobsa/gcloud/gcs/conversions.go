@@ -130,19 +130,13 @@ func toObject(in *storagev1.Object) (out *Object, err error) {
 		return
 	}
 
-	if len(crc32cString) != 4 {
-		err = fmt.Errorf(
-			"Wrong length for decoded Crc32c field: %d",
-			len(crc32cString))
-
-		return
+	if len(crc32cString) == 4 {
+		out.CRC32C =
+			uint32(crc32cString[0])<<24 |
+				uint32(crc32cString[1])<<16 |
+				uint32(crc32cString[2])<<8 |
+				uint32(crc32cString[3])<<0
 	}
-
-	out.CRC32C =
-		uint32(crc32cString[0])<<24 |
-			uint32(crc32cString[1])<<16 |
-			uint32(crc32cString[2])<<8 |
-			uint32(crc32cString[3])<<0
 
 	return
 }
